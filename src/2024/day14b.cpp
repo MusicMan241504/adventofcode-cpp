@@ -15,14 +15,12 @@ class Robot{
 			p[1] += v[1];
 			if (p[0] < 0) {
 				p[0] += 101; // 101
-			}
-			if (p[0] > 100) {
+			} else if (p[0] > 100) {
 				p[0] -= 101; // 101
 			}
 			if (p[1] < 0) {
 				p[1] += 103; // 103
-			}
-			if (p[1] > 102) {
+			} else if (p[1] > 102) {
 				p[1] -= 103; // 103
 			}
 		}
@@ -40,24 +38,38 @@ void printCoords(std::list<Robot*> lst) {
 	}
 }
 
-bool isChristmasTree(std::list<Robot*> lst) {
-	// (40,40) - (60,60) all squares contain robot
-	for (int x{50}; x<52; x++) {
-		for (int y{60}; y<62; y++) {
-			// find robot
-			bool found{0};
-			for (auto e : lst) {
-				if (e->p[0] == x && e-> p[1] == y) {
-					found = 1;
-					break;
-				}
-			}
-			if (!found) {
-				return 0;
-			}
+bool isChristmasTree(std::list<Robot*>& lst) {
+	// find row containing > 50 robots
+	std::vector<int> count(103); // last 20 rows
+	for (const auto& e : lst) {
+		count[e->p[1]]++;
+	}
+
+	for (const auto& e : count) {
+		if (e >= 32) {
+			return 1;
 		}
 	}
-	return 1;
+	return 0;
+}
+
+void printRobots(std::list<Robot*> lst) {
+	std::vector<std::vector<bool>> robots(103,std::vector<bool>(101,0));
+	for (const auto& e : lst) {
+		robots[e->p[1]][e->p[0]] = 1;
+	}
+
+	for (const auto& row : robots) {
+		for (auto e : row) {
+			if (e) {
+				std::cout << '#';
+			} else {
+				std::cout << ' ';
+			}
+		}
+		std::cout << '\n';
+	}
+	std::cout << '\n';
 }
 
 int main() {
@@ -72,7 +84,7 @@ int main() {
 		}
 		std::vector<int> p(2);
 
-		
+
 		p[0] = std::stoi(line.substr(2, line.find(',')-2));
 		p[1] = std::stoi(line.substr(line.find(',')+1, line.find('v')-line.find(',')-1));
 
@@ -83,14 +95,27 @@ int main() {
 		robots.push_back(new Robot{p,v});
 
 	}
-	size_t i{0};
-	for (; !isChristmasTree(robots); i++) {
-		for (auto robot : robots) {
+	size_t i{1};
+	for (; 1; i++) {
+		for (auto& robot : robots) {
 			robot->move();
 		}
-		//std::cout << i << '\n';
+		if (i % 100000 == 0) {
+			std::cout << i << '\n';
+		}
+		
+		if (isChristmasTree(robots)) {
+			printRobots(robots);
+			std::string s;
+			std::cout << i << '\n';
+			std::cin >> s;
+			std::cout << "\n\n\n\n\n";
+		}
+
+
 	}
-	std::cout << i << '\n';
+	//std::cout << i << '\n';
+	//printRobots(robots);
 
 
 
