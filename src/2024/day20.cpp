@@ -4,7 +4,6 @@
 #include <string>
 #include <vector>
 
-
 struct Node {
 	size_t x{};
 	size_t y{};
@@ -43,7 +42,7 @@ void resetDistances(std::vector<std::vector<Node*>>& arr) {
 	}
 }
 
-int findShortestPath(std::vector<std::vector<Node*>>& grid, size_t startX, size_t startY, size_t endX, size_t endY) {
+int findShortestPath(std::vector<std::vector<Node*>>& grid, size_t startX, size_t startY, size_t endX, size_t endY, std::vector<std::vector<int>>& moves) {
 	std::priority_queue<Node*, std::vector<Node*>, CompareNodes> pq;
 	pq.push(grid[startY][startX]);
 	grid[startY][startX]->d = 0;
@@ -53,47 +52,17 @@ int findShortestPath(std::vector<std::vector<Node*>>& grid, size_t startX, size_
 		Node* n {pq.top()};
 		pq.pop();
 
-
-
 		// go through possible moves
-
-		// x+1
-		if (n->x+1 < grid[0].size()) {
-			if (grid[n->y][n->x+1]->isPath) { // if is path
-				int newD{n->d+1};
-				if (newD < grid[n->y][n->x+1]->d) {
-					grid[n->y][n->x+1]->d = newD;
-					pq.push(grid[n->y][n->x+1]);
-				}
-			}
-		}
-		// y+1
-		if (n->y+1 < grid.size()) {
-			if (grid[n->y+1][n->x]->isPath) { // if is path
-				int newD{n->d+1};
-				if (newD < grid[n->y+1][n->x]->d) {
-					grid[n->y+1][n->x]->d = newD;
-					pq.push(grid[n->y+1][n->x]);
-				}
-			}
-		}
-		// x-1
-		if (n->x > 0) {
-			if (grid[n->y][n->x-1]->isPath) { // if is path
-				int newD{n->d+1};
-				if (newD < grid[n->y][n->x-1]->d) {
-					grid[n->y][n->x-1]->d = newD;
-					pq.push(grid[n->y][n->x-1]);
-				}
-			}
-		}
-		// y-1
-		if (n->y > 0){
-			if (grid[n->y-1][n->x]->isPath) { // if is path
-				int newD{n->d+1};
-				if (newD < grid[n->y-1][n->x]->d) {
-					grid[n->y-1][n->x]->d = newD;
-					pq.push(grid[n->y-1][n->x]);
+		for (auto move : moves) {
+			if (n->x+1 + move[0] > 0 && n->y+1 + move[1] > 0 && n->x + move[0] < grid[0].size() && n->y + move[1] < grid.size()) {
+				size_t newX{n->x + move[0]};
+				size_t newY{n->y + move[1]};
+				if (grid[newY][newX]->isPath) { // if is path
+					int newD{n->d+1};
+					if (newD < grid[newY][newX]->d) {
+						grid[newY][newX]->d = newD;
+						pq.push(grid[newY][newX]);
+					}
 				}
 			}
 		}
@@ -102,10 +71,26 @@ int findShortestPath(std::vector<std::vector<Node*>>& grid, size_t startX, size_
 	return grid[endY][endX]->d;
 }
 
+void extractDistances(std::vector<std::vector<int>>& out, std::vector<std::vector<Node*>>& grid) {
+	for (size_t y{0}; y < grid.size(); y++) {
+		for (size_t x{0}; x < grid[0].size(); x++) {
+			out[y][x] = grid[y][x]->d;
+		}
+	}
+}
+
 int main() {
 	std::ifstream f{"day20.txt"};
 
 	std::vector<std::vector<Node*>> grid;
+
+
+	std::vector<std::vector<int>> moves{
+		{1,0},
+			{0,1},
+			{-1,0},
+			{0,-1}};
+
 
 
 	size_t startX{0};
@@ -132,25 +117,56 @@ int main() {
 		grid.push_back(row);
 	}
 
-	int normalDistance{findShortestPath(grid, startX, startY, endX, endY)};
+	// distance from start
+	int normalDistance{findShortestPath(grid, startX, startY, endX, endY, moves)};
+	//std::cout << normalDistance << '\n';
+	std::vector<std::vector<int>> distanceFromStart(grid.size(), std::vector<int>(grid[0].size(), 999999999));
+	extractDistances(distanceFromStart, grid);
+	resetDistances(grid);
+
+	// distance from end
+	findShortestPath(grid, endX, endY, startX, startY, moves);
+	std::vector<std::vector<int>> distanceFromEnd(grid.size(), std::vector<int>(grid[0].size(), 999999999));
+	extractDistances(distanceFromEnd, grid);
 	resetDistances(grid);
 
 	int total{0};
 	for (size_t y{0}; y < grid.size(); y++) {
 		for (size_t x{0}; x < grid[0].size(); x++) {
 			if (!grid[y][x]->isPath) {
-				grid[y][x]->isPath = 1;
-				int newDistance{findShortestPath(grid, startX, startY, endX, endY)};
-				//std::cout << normalDistance - newDistance << '\n';
-				if (normalDistance - newDistance >= 100) {
-					total++;
+				// grid[y][x] is start of cheat
+				// cheats must start on wall and end on path
+
+				// for each surrounding path to end
+				for (auto move : moves) {
+					if (x+1 + move[0] > 0 && y+1 + move[1] > 0 && x + move[0] < grid[0].size() && y + move[1] < grid.size()) {
+						size_t x2{x + move[0]};
+						size_t y2{y + move[1]};
+						if (grid[y2][x2]->isPath) {
+							int newDistance{999999999};
+							// for each surrounging path to start
+							for (auto move : moves) {
+								if (x+1 + move[0] > 0 && y+1 + move[1] > 0 && x + move[0] < grid[0].size() && y + move[1] < grid.size()) {
+									size_t x1{x + move[0]};
+									size_t y1{y + move[1]};
+									if (grid[y1][x1]->isPath) {
+										int tmpD{distanceFromStart[y1][x1] + distanceFromEnd[y2][x2] + 2};
+										if (tmpD < newDistance) {
+											newDistance = tmpD;
+										}
+									}
+								}
+							}
+							if (normalDistance - newDistance >= 100) {
+								total++;
+							}
+						}
+					}
 				}
-				grid[y][x]->isPath = 0;
-				resetDistances(grid);
 			}
 		}
 	}
-	
+
 	std::cout << total << '\n';
 
 	// clear memory
