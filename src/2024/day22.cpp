@@ -1,8 +1,6 @@
 #include <fstream>
 #include <iostream>
-#include <list>
 #include <string>
-#include <vector>
 
 void mix(long long int& secretNumber, long long int num) {
 	secretNumber = secretNumber ^ num;
